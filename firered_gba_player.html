@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#20242d">
+<title>FireRed GBA Player</title>
+<style>
+:root{color-scheme:dark;--bg:#171a20;--panel:#252a34;--panel2:#303744;--red:#d94a4a;--text:#f4f5f7;--muted:#b7bfcb}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#343c4b 0,#171a20 65%);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
+main{width:min(100%,900px);margin:0 auto;padding:22px 0 34px}
+header{text-align:center;margin-bottom:18px}
+.logo{display:inline-flex;align-items:center;gap:10px;font-weight:850;letter-spacing:.06em;font-size:clamp(22px,5vw,34px)}
+.ball{width:28px;height:28px;border:3px solid white;border-radius:50%;background:linear-gradient(to bottom,#e64b4b 0 46%,#fff 46% 54%,#303744 54%);position:relative}
+.ball:after{content:"";position:absolute;width:8px;height:8px;border:2px solid #303744;border-radius:50%;background:#fff;left:7px;top:7px}
+.sub{color:var(--muted);font-size:14px;margin-top:6px}
+.shell{background:linear-gradient(145deg,#4a5362,#272d38 60%);border:1px solid #667181;border-radius:24px;padding:clamp(12px,3vw,24px);box-shadow:0 18px 50px #0008}
+.screen-wrap{background:#080a0d;border:8px solid #11151c;border-radius:12px;padding:8px;box-shadow:inset 0 0 0 1px #596171}
+#game{width:100%;min-height:220px;aspect-ratio:3/2;background:#080a0d;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:4px}
+#game canvas{max-width:100%;max-height:100%;object-fit:contain}
+.placeholder{text-align:center;padding:25px 14px;color:#dce2ea}
+.placeholder .pixel{font-size:42px;margin-bottom:8px}
+.placeholder h2{font-size:19px;margin:4px 0 8px}
+.placeholder p{font-size:13px;line-height:1.5;color:#aeb8c6;max-width:440px;margin:0 auto}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:17px 0 4px}
+button,.file-label{border:0;border-radius:12px;padding:12px 17px;background:var(--panel2);color:white;font-weight:700;font-size:14px;cursor:pointer;touch-action:manipulation}
+button:active,.file-label:active{transform:scale(.97);filter:brightness(1.2)}
+.primary{background:var(--red)}
+input[type=file]{display:none}
+.status{min-height:22px;text-align:center;color:#c4ccd7;font-size:13px;margin:12px 0 0}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,5vw,42px);align-items:center;padding:20px 4px 5px;max-width:650px;margin:0 auto}
+.dpad{width:150px;height:150px;position:relative;margin:auto;touch-action:none}
+.dp{position:absolute;background:#151a22;border:1px solid #505a69;border-radius:8px;box-shadow:0 4px 0 #0c0f14;display:flex;align-items:center;justify-content:center;color:#aeb7c4;font-size:22px;user-select:none;-webkit-user-select:none}
+.dp.up,.dp.down{width:48px;height:54px;left:51px}
+.dp.left,.dp.right{width:54px;height:48px;top:51px}
+.dp.up{top:0}.dp.down{bottom:0}.dp.left{left:0}.dp.right{right:0}
+.dp.center{width:48px;height:48px;left:51px;top:51px;border-radius:50%;background:#202631;box-shadow:none}
+.ab-area{display:flex;justify-content:center;align-items:center;gap:17px;transform:rotate(-18deg)}
+.game-btn{width:66px;height:66px;border-radius:50%;background:#d64c56;border:2px solid #f08b8d;box-shadow:0 5px 0 #762c35;color:white;font-size:21px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
+.game-btn.b{background:#4e83c9;border-color:#8ab5ec;box-shadow:0 5px 0 #28476e}
+.utility{display:flex;justify-content:center;gap:18px;margin:18px 0 0}
+.utility button{border-radius:20px;padding:8px 23px;background:#161b24;border:1px solid #596273;color:#d8dee8;font-size:12px}
+.note{background:#202631;border:1px solid #394252;border-radius:14px;padding:15px 17px;margin-top:18px;color:#c5ceda;font-size:13px;line-height:1.55}
+.note strong{color:white}
+footer{text-align:center;color:#8994a4;font-size:11px;margin-top:16px}
+@media(max-width:480px){.controls{gap:8px}.dpad{transform:scale(.88)}.game-btn{width:58px;height:58px}.ab-area{gap:12px}.shell{border-radius:18px}.screen-wrap{border-width:6px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo"><span class="ball"></span> FIRERED GBA PLAYER</div>
+  <div class="sub">A Game Boy Advance-style player for iPad Safari</div>
+</header>
+<section class="shell">
+  <div class="screen-wrap"><div id="game">
+    <div class="placeholder" id="placeholder">
+      <div class="pixel">🎮</div>
+      <h2>Ready for your adventure?</h2>
+      <p>Choose your legally obtained Pokémon FireRed .gba file below. The game will load in this screen.</p>
+    </div>
+  </div></div>
+  <div class="actions">
+    <label class="file-label primary" for="romFile">Choose FireRed ROM</label>
+    <input id="romFile" type="file" accept=".gba,application/octet-stream">
+    <button id="fullscreen">Full Screen</button>
+    <button id="restart">Restart Game</button>
+  </div>
+  <div class="status" id="status" role="status" aria-live="polite">No game loaded</div>
+  <div class="controls" aria-label="Touchscreen Game Boy controls">
+    <div class="dpad" aria-label="Directional pad">
+      <div class="dp up" data-key="up">▲</div>
+      <div class="dp down" data-key="down">▼</div>
+      <div class="dp left" data-key="left">◀</div>
+      <div class="dp right" data-key="right">▶</div>
+      <div class="dp center"></div>
+    </div>
+    <div class="ab-area">
+      <button class="game-btn b" data-key="b" aria-label="B button">B</button>
+      <button class="game-btn" data-key="a" aria-label="A button">A</button>
+    </div>
+  </div>
+  <div class="utility">
+    <button data-key="select">SELECT</button>
+    <button data-key="start">START</button>
+  </div>
+</section>
+<div class="note">
+  <strong>How to use</strong><br>
+  1. Tap <strong>Choose FireRed ROM</strong> and select your .gba file from the iPad Files app.<br>
+  2. Wait for the emulator to load, then use the on-screen controls.<br>
+  3. Use the game's own save feature. Emulator save states may also be available in the emulator menu.<br><br>
+  <strong>iPad tip:</strong> In Safari, tap Share → Add to Home Screen to make a home-screen shortcut. Keep this page open while playing; browser storage and save behavior can vary by iPad and Safari settings.
+</div>
+<footer>Unofficial emulator interface. Pokémon and Pokémon FireRed are trademarks of their respective owners. No game ROM is included.</footer>
+</main>
+<script>
+(() => {
+  const romInput = document.getElementById('romFile');
+  const game = document.getElementById('game');
+  const status = document.getElementById('status');
+  let romUrl = null;
+  let loaderAdded = false;
+  let gameLoaded = false;
+
+  const setStatus = (message) => status.textContent = message;
+
+  function loadRom(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.gba')) {
+      setStatus('Please choose a .gba Game Boy Advance ROM.');
+      return;
+    }
+    if (romUrl) URL.revokeObjectURL(romUrl);
+    romUrl = URL.createObjectURL(file);
+    gameLoaded = false;
+    game.innerHTML = '<div class="placeholder"><div class="pixel">⏳</div><h2>Loading game…</h2><p>Keep this page open while the emulator starts.</p></div>';
+    setStatus('Loading ' + file.name + '…');
+
+    // EmulatorJS configuration. The user supplies the ROM; this page does not include one.
+    window.EJS_player = '#game';
+    window.EJS_core = 'gba';
+    window.EJS_gameUrl = romUrl;
+    window.EJS_gameName = file.name.replace(/\.gba$/i, '');
+    window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+    window.EJS_startOnLoaded = true;
+    window.EJS_gameID = 'firered-ipad-player';
+    window.EJS_color = '#d94a4a';
+    window.EJS_backgroundColor = '#080a0d';
+    window.EJS_ready = () => {
+      gameLoaded = true;
+      setStatus('Game loaded — use the touchscreen controls or emulator menu.');
+    };
+    window.EJS_onGameStart = () => {
+      gameLoaded = true;
+      setStatus('Playing ' + file.name);
+    };
+    if (!loaderAdded) {
+      loaderAdded = true;
+      const script = document.createElement('script');
+      script.src = window.EJS_pathtodata + 'loader.js';
+      script.onload = () => setStatus('Emulator engine loaded. Starting game…');
+      script.onerror = () => setStatus('Could not load emulator engine. Check your internet connection and reload this page.');
+      document.body.appendChild(script);
+    } else {
+      setStatus('Emulator already initialized. Reload the page before choosing a different ROM.');
+    }
+  }
+
+  romInput.addEventListener('change', e => loadRom(e.target.files[0]));
+
+  document.getElementById('fullscreen').addEventListener('click', () => {
+    const target = game;
+    if (target.requestFullscreen) target.requestFullscreen().catch(() => setStatus('Full Screen is not available in this Safari mode.'));
+    else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+    else setStatus('Use Safari’s page controls to enter full screen if available.');
+  });
+
+  document.getElementById('restart').addEventListener('click', () => {
+    if (!romUrl) { setStatus('Choose a ROM first.'); return; }
+    setStatus('To restart safely, reload this page and choose your ROM again.');
+  });
+
+  // EmulatorJS listens for standard GBA keyboard keys. These controls synthesize them.
+  const keyMap = {
+    up:'ArrowUp', down:'ArrowDown', left:'ArrowLeft', right:'ArrowRight',
+    a:'x', b:'z', start:'Enter', select:'Shift'
+  };
+  function keyEvent(key, type) {
+    const code = keyMap[key];
+    if (!code) return;
+    const event = new KeyboardEvent(type, {key:code, code:code, bubbles:true, cancelable:true});
+    document.dispatchEvent(event);
+    window.dispatchEvent(new KeyboardEvent(type, {key:code, code:code, bubbles:true, cancelable:true}));
+  }
+  document.querySelectorAll('[data-key]').forEach(control => {
+    const key = control.dataset.key;
+    const down = e => { e.preventDefault(); keyEvent(key,'keydown'); };
+    const up = e => { e.preventDefault(); keyEvent(key,'keyup'); };
+    control.addEventListener('pointerdown', down);
+    control.addEventListener('pointerup', up);
+    control.addEventListener('pointercancel', up);
+    control.addEventListener('lostpointercapture', up);
+    control.addEventListener('contextmenu', e => e.preventDefault());
+  });
+})();
+</script>
+</body>
+</html>
